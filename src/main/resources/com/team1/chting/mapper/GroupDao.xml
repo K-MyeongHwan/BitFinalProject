@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.team1.chting.dao.GroupDao">
+
+    <select id="checkMember" resultType="com.team1.chting.dto.GroupUserRoleDto">
+        select group_role_no
+        from group_user_role
+        where userid = #{userid}
+          and group_no = #{group_no}
+    </select>
+
+    <select id="getPostList" resultType="com.team1.chting.dto.PostDto">
+        select pg.post_no, ui.nickname, pc.post_catename, pg.subject, pg.writedate, pg.post_catecode, pg.file
+        from post_group pg
+                 left join post_category pc on pg.post_catecode = pc.post_catecode
+                 left join user_info ui on pg.userid = ui.userid
+        where pg.enabled = 1
+          and pg.group_no = #{groupNo}
+        order by decode(pg.post_catecode = 'A001', 1), pg.writedate desc limit ${page}, 10
+    </select>
+
+    <!--페이지 정보를 지정한 크기만큼 가져오기-->
+    <select id="listPageCriPost" resultType="com.team1.chting.dto.PostDto">
+        select pg.post_no, ui.nickname, pc.post_catename, pg.subject, pg.writedate, pg.post_catecode, pg.file
+        from post_group pg
+                 left join post_category pc on pg.post_catecode = pc.post_catecode
+                 left join user_info ui on pg.userid = ui.userid
+        where pg.enabled = 1
+          and pg.group_no = #{groupNo}
+        order by decode(pg.post_catecode = 'A001', 1), pg.writedate desc limit #{pageStart}, #{pageSize}
+    </select>
+
+    <select id="pageCountPost" resultType="int">
+        select count(*)
+        from post_group
+        where enabled = 1
+          and group_no = #{group_no}
+    </select>
+
+    <!--  글쓰기  -->
+    <insert id="insert" parameterType="com.team1.chting.dto.PostDto">
+        insert into post_group(group_no, userid, post_catecode, subject, content, enabled)
+        values (#{group_no}, #{userid}, #{post_catecode}, #{subject}, #{content},'1')
+        <selectKey keyProperty="post_no" resultType="Integer">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+    </insert>
+
+    <!-- 글쓰기 파일따로  업데이트 -->
+    <update id="insertFile">
+        update post_group
+        set file = #{file}
+        where post_no = #{post_no}
+    </update>
+
+    <!-- 상세보기 -->
+    <select id="read" parameterType="int" resultType="com.team1.chting.dto.PostDto">
+        select pg.*, pc.post_catename
+        from post_group pg
+                 join post_category pc on pg.post_catecode = pc.post_catecode
+        where post_no = #{post_no}
+    </select>
+
+    <!--  삭제하기  -->
+    <!--    <delete id="delete" parameterType="int">-->
+    <!--        delete-->
+    <!--        from post_group-->
+    <!--        where post_no = #{post_no}-->
+    <!--    </delete>-->
+
+    <update id="delete">
+        update post_group
+        set enabled = 0
+        where post_no = #{post_no}
+    </update>
+
+
+    <!--  수정하기  -->
+    <update id="update" parameterType="com.team1.chting.dto.PostDto">
+        update post_group
+        set subject       = #{subject},
+            content       = #{content},
+            file          = #{file},
+            post_catecode = #{post_catecode}
+        where post_no = #{post_no}
+    </update>
+
+
+    <select id="randomGroup" resultType="com.team1.chting.dto.GroupDto">
+        (SELECT group_no, group_name, group_img, content FROM group_info WHERE enabled = 1 LIMIT 10) order by rand();
+    </select>
+
+    <!-- 관심사 기반 추천모임 -->
+    <select id="catecodeGroup" resultType="com.team1.chting.dto.GroupDto">
+        select gi.group_no, gi.group_name, gi.group_img, gi.content, pg.cnt
+        from user_info u
+                 join user_interest ui on u.userid = ui.userid
+                 join group_info gi on ui.catecode = gi.catecode
+                 left join (
+            select group_no, count(post_no) as cnt
+            from post_group
+            group by group_no
+        ) pg on gi.group_no = pg.group_no
+        where gi.enabled = 1
+          and u.userid = #{userid}
+        order by pg.cnt desc limit 4
+    </select>
+
+    <!-- 지역 기반 추천모임 -->
+    <select id="areaGroup" resultType="com.team1.chting.dto.GroupDto">
+        select gi.group_no, gi.group_name, gi.group_img, gi.content, pg.cnt
+        from user_info u
+                 join group_info gi on u.first_area = gi.area_code or u.second_area = gi.area_code
+                 left join (
+            select group_no, count(post_no) as cnt
+            from post_group
+            group by group_no
+        ) pg on gi.group_no = pg.group_no
+        where gi.enabled = 1
+          and u.userid = #{userid}
+        order by pg.cnt desc limit 4
+    </select>
+
+    <select id="userGroupList" resultType="com.team1.chting.dto.GroupDto">
+        select gi.group_no, gi.group_name
+        from user_info u
+                 join group_user_role gur on u.userid = gur.userid
+                 join group_info gi on gur.group_no = gi.group_no
+        where u.enabled = 1
+          and gi.enabled = 1
+          and u.userid = #{userid}
+    </select>
+
+    <select id="groupByGroup_no" resultType="com.team1.chting.dto.GroupDto">
+        select gi.userid, gi.group_no, gi.group_img, gi.group_name, gi.content, ic.catename, a.area_name
+        from group_info gi
+                 left join interest_category ic on gi.catecode = ic.catecode
+                 left join area a on gi.area_code = a.area_code
+        where gi.group_no = #{groupNo}
+    </select>
+
+
+    <!--댓글등록-->
+    <insert id="replyWrite" parameterType="com.team1.chting.dto.PostReplyDto">
+        insert into post_reply(post_no, userid, content)
+        values (#{post_no}, #{userid}, #{content})
+    </insert>
+
+
+    <!--  댓글목록  -->
+    <select id="getReply" parameterType="int" resultType="com.team1.chting.dto.PostReplyDto">
+        select reply_no, post_no, userid, content, writedate
+        from post_reply
+        where post_no = #{post_no}
+        order by writedate desc
+    </select>
+
+    <!--  댓글삭제  -->
+    <delete id="replyDelete" parameterType="int">
+        delete
+        from post_reply
+        where reply_no = #{reply_no}
+    </delete>
+
+
+    <!--  댓글수정  -->
+    <update id="replyUpdate" parameterType="com.team1.chting.dto.PostReplyDto">
+        update post_reply
+        set content=#{content}
+        where reply_no = ${reply_no}
+    </update>
+
+    <!-- 모임 생성  -->
+    <insert id="insertGroup" parameterType="com.team1.chting.dto.GroupDto">
+        insert into group_info (userid, group_name, group_img, content, area_code, catecode)
+        values (#{userid}, #{group_name}, #{group_img}, #{content}, #{area_code}, #{catecode})
+
+    </insert>
+
+    <select id="selectGroup" resultType="com.team1.chting.dto.GroupDto">
+        select group_no,
+               userid,
+               group_name,
+               group_img,
+               content,
+               area_code,
+               catecode,
+               enabled,
+               opendate
+        from group_info
+        order by group_no desc limit 1;
+    </select>
+
+    <select id="selectGroupRoleNo" resultType="String">
+        select group_role_no
+        from group_user_role
+        where userid = #{userid}
+          AND group_no = #{group_no}
+    </select>
+
+    <insert id="insertGroupJoinRequest" parameterType="com.team1.chting.dto.JoinRequestDto">
+        insert into group_join_request(userid, group_no)
+        values (#{userid}, #{group_no});
+    </insert>
+
+    <delete id="deleteGroupUserRole" parameterType="com.team1.chting.dto.GroupUserRoleDto">
+        delete
+        from group_user_role
+        where group_no = #{group_no}
+          and userid = #{userid};
+    </delete>
+
+    <select id="selectPostCategory" resultType="com.team1.chting.dto.PostCategoryDto">
+        select post_catecode, post_catename
+        from post_category
+    </select>
+</mapper>

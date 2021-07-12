@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.team1.chting.dao.ChartDao">
+
+    <select id="getRatio" resultType="com.team1.chting.dto.chartdto.ChartRatioDto">
+        SELECT COUNT(CASE WHEN gender = "여" THEN 1 END) AS female,
+               COUNT(CASE WHEN gender = "남" THEN 1 END) AS male
+        FROM user_info
+    </select>
+
+    <select id="getRecentUser" resultType="com.team1.chting.dto.chartdto.ChartRecentUserDto">
+        SELECT COUNT(*)                                                                               AS today,
+               COUNT(<![CDATA[CASE WHEN joindate < '${now}' THEN 1 END]]>)                            AS oneDaysAgo,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -1 DAY) THEN 1 END]]>) AS yesterday,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -2 DAY) THEN 1 END]]>) AS twoDaysAgo,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -3 DAY) THEN 1 END]]>) AS threeDaysAgo,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -4 DAY) THEN 1 END]]>) AS fourDaysAgo,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -5 DAY) THEN 1 END]]>) AS fiveDaysAgo,
+               COUNT(<![CDATA[CASE WHEN joindate < DATE_ADD('${now}', INTERVAL -6 DAY) THEN 1 END]]>) AS sixDaysAgo
+        from user_info;
+    </select>
+
+    <select id="getChartJoinType" resultType="com.team1.chting.dto.chartdto.ChartJoinTypeDto">
+        SELECT COUNT(CASE WHEN logintype = "google" and enabled = 1 THEN 1 END) AS google,
+               COUNT(CASE WHEN logintype = "kakao" and enabled = 1 THEN 1 END)  AS kakao,
+               COUNT(CASE WHEN logintype = "github" and enabled = 1 THEN 1 END) AS github
+        FROM user_info
+    </select>
+
+    <select id="getTotalUser" resultType="int">
+        select count(*)
+        from user_info
+        where enabled = 1
+    </select>
+
+    <select id="getTotalGroup" resultType="int">
+        select count(*)
+        from group_info
+        where enabled = 1
+    </select>
+    <select id="getTotalEvent" resultType="int">
+        select count(*)
+        from group_schedule;
+    </select>
+    <select id="getTotalInterest" resultType="int">
+        select count(catename) as totalInterest
+        from user_interest
+                 left join interest_category ic on ic.catecode = user_interest.catecode
+        group by catename
+        order by totalInterest desc limit 1
+    </select>
+
+    <select id="getTopInterest" resultType="String">
+        select ic.catename as topInterest
+        from user_interest
+                 left join interest_category ic on ic.catecode = user_interest.catecode
+        group by catename
+        order by count(catename) desc limit 1
+    </select>
+
+    <select id="getChartGroupTypes" resultType="com.team1.chting.dto.chartdto.ChartInterestDto">
+        select COUNT(CASE WHEN catecode = "A" and enabled = 1 THEN 1 END) AS outdoor,
+               COUNT(CASE WHEN catecode = "B" and enabled = 1 THEN 1 END) AS exercises,
+               COUNT(CASE WHEN catecode = "C" and enabled = 1 THEN 1 END) AS book,
+               COUNT(CASE WHEN catecode = "D" and enabled = 1 THEN 1 END) AS language,
+               COUNT(CASE WHEN catecode = "E" and enabled = 1 THEN 1 END) AS culture,
+               COUNT(CASE WHEN catecode = "F" and enabled = 1 THEN 1 END) AS music,
+               COUNT(CASE WHEN catecode = "G" and enabled = 1 THEN 1 END) AS crafting,
+               COUNT(CASE WHEN catecode = "H" and enabled = 1 THEN 1 END) AS dance,
+               COUNT(CASE WHEN catecode = "I" and enabled = 1 THEN 1 END) AS voluntary,
+               COUNT(CASE WHEN catecode = "J" and enabled = 1 THEN 1 END) AS social,
+               COUNT(CASE WHEN catecode = "K" and enabled = 1 THEN 1 END) AS car,
+               COUNT(CASE WHEN catecode = "L" and enabled = 1 THEN 1 END) AS picture,
+               COUNT(CASE WHEN catecode = "M" and enabled = 1 THEN 1 END) AS game,
+               COUNT(CASE WHEN catecode = "N" and enabled = 1 THEN 1 END) AS cook,
+               COUNT(CASE WHEN catecode = "O" and enabled = 1 THEN 1 END) AS pet,
+               COUNT(CASE WHEN catecode = "P" and enabled = 1 THEN 1 END) AS etc
+        from user_info left join user_interest ui
+        on user_info.userid = ui.userid
+    </select>
+
+    <select id="getChartSchedule" resultType="com.team1.chting.dto.chartdto.ChartScheduleDto">
+        select group_name as title, xcoord, ycoord
+        from group_schedule
+                 left join group_info gi on gi.group_no = group_schedule.group_no;
+    </select>
+
+
+</mapper>
